@@ -111,12 +111,96 @@ Behavior Parameters — параметры, определяющие, какую
 ## Задание 3
 ### Доработайте сцену и обучите ML-Agent таким образом, чтобы шар перемещался между двумя кубами разного цвета. Кубы должны, как и в первом задании, случайно изменять координаты на плоскости.
 
+Выполнено. Ниже представлен гиф с демонстрацией работы модели. Также код.
+![3уу](https://user-images.githubusercontent.com/78469125/196960631-62d67394-7491-4666-bb79-5dd9cfb71f24.gif)
 
+```
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Unity.MLAgents;
+using Unity.MLAgents.Sensors;
+using Unity.MLAgents.Actuators;
+
+public class RollerAgent : Agent
+{
+    Rigidbody rBody;
+    // Start is called before the first frame update
+    void Start()
+    {
+        rBody = GetComponent<Rigidbody>();
+    }
+
+    public GameObject Target;
+    public GameObject Target2;
+    private bool touch_target;
+    private bool touch_target2;
+    public override void OnEpisodeBegin()
+    {
+        if (this.transform.localPosition.y < 0)
+        {
+            this.rBody.angularVelocity = Vector3.zero;
+            this.rBody.velocity = Vector3.zero;
+            this.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+
+        Target.transform.localPosition = new Vector3(Random.value * 8-4, 0.5f, Random.value * 8-4);
+        Target2.transform.localPosition = new Vector3(Random.value * 8-4, 0.5f, Random.value * 8-4);
+        Target.SetActive(true);
+        Target2.SetActive(true);
+        touch_target = false;
+        touch_target2 = false;
+    }
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(Target.transform.localPosition);
+        sensor.AddObservation(Target2.transform.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
+        sensor.AddObservation(touch_target);
+        sensor.AddObservation(touch_target2);
+        sensor.AddObservation(rBody.velocity.x);
+        sensor.AddObservation(rBody.velocity.z);
+    }
+    public float forceMultiplier = 10;
+    public override void OnActionReceived(ActionBuffers actionBuffers)
+    {
+        Vector3 controlSignal = Vector3.zero;
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
+        rBody.AddForce(controlSignal * forceMultiplier);
+
+        float distanceToTarget = Vector3.Distance(this.transform.localPosition, Target.transform.localPosition);
+        float distancetoTarget2 = Vector3.Distance(this.transform.localPosition, Target2.transform.localPosition);
+
+        if(!touch_target & distanceToTarget < 1.42f)
+        {
+            touch_target = true;
+            Target.SetActive(false);
+        }
+
+        if (!touch_target2 & distanceToTarget < 1.42f)
+        {
+            touch_target2 = true;
+            Target2.SetActive(false);
+        }
+
+        if (touch_target & touch_target2)
+        {
+            SetReward(1.0f);
+            EndEpisode();
+        }
+        else if (this.transform.localPosition.y < 0)
+        {
+            SetReward(-0.5f);
+            EndEpisode();
+        }
+    }
+}
+```
 
 ## Выводы
 
-Удалось настроить API к гугл-таблицам от PyCharm, было интересно разобрать изначально данный код на последующие задачи. Один из выводов состоит в том, что Unity, а точнее С#, очень привередлив к коду, ввиду чего требовалась постоянная модификация скрипта, сравнения с дефолтными данными, дебаг, и нервы.
-
+Игровой баланс — формат взаимодействия между героем и персонажами, своего рода "равновесие" между этими взаимодействиями для максимально комфортного и реалистичного игрового опыта. Для этого необходимы точные математические расчеты, но пренебрежение самой игрой и развлечением ради математики не рекомендуется. Разнообразие NPC, их реалистичное поведение приводят к положительному игровому опыту. Собственно, машинное обучение является полезным инструментом для реализации "реалистичности" поведения персонажей, "обучая" их необходимым действиям. Например, в данной лабораторной работе мы обучали шарик таким образом, чтобы он максимально плавно передвигался от одного куба ко второму. После нескольких тысяч итераций шар начинает запоминать положения этих кубов и начинает их предсказывать, таким образом сокращая время передвижения и предоставляя максимально естественное поведение.
 
 | Plugin | README |
 | ------ | ------ |
